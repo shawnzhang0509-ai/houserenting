@@ -24,9 +24,8 @@ import { Button } from "@/components/ui/button";
 import { appendDemandPost } from "@/lib/demandStorage";
 import {
   findMatchesForPost,
-  formatMatchSummaryForAdmin,
+  formatMatchSummary,
 } from "@/lib/matchEngine";
-import { notifyAdminMatch } from "@/lib/notifyAdmin";
 import type { DemandPost, PostType } from "@/types/demand";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -60,10 +59,6 @@ export default function SubmitForm() {
   const [matchDialogOpen, setMatchDialogOpen] = useState(false);
   const [lastMatches, setLastMatches] = useState<DemandPost[]>([]);
   const [lastNewPost, setLastNewPost] = useState<DemandPost | null>(null);
-  const [notifyChannel, setNotifyChannel] = useState<
-    "ntfy" | "mailto" | "none" | null
-  >(null);
-  const [notifyOk, setNotifyOk] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!formRef.current) return;
@@ -101,7 +96,7 @@ export default function SubmitForm() {
     setMoveInDate("");
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     const rentNum = Number(monthlyRent);
@@ -152,28 +147,13 @@ export default function SubmitForm() {
     const matches = findMatchesForPost(newPost, others);
 
     if (matches.length > 0) {
-      const summary = formatMatchSummaryForAdmin(newPost, matches);
-      const notify = await notifyAdminMatch(summary);
       setLastNewPost(newPost);
       setLastMatches(matches);
-      setNotifyChannel(notify.channel);
-      setNotifyOk(notify.ok);
       setMatchDialogOpen(true);
-      if (notify.ok && notify.channel === "ntfy") {
-        toast.success("已通知站长，请留意推送");
-      } else if (notify.ok && notify.channel === "mailto") {
-        toast.info("已尝试打开邮件客户端发送提醒");
-      } else if (!notify.ok) {
-        toast.warning(
-          notify.channel === "ntfy"
-            ? `推送失败：${notify.error ?? "请检查 ntfy 地址"}`
-            : "未配置推送：匹配内容已显示在弹窗中，请自行联系"
-        );
-      }
+      toast.success("本机判断：有匹配");
     } else {
-      toast.success("已保存你的信息", {
-        description:
-          "当前为浏览器本地记录；若未配置跨设备数据，仅本机内可自动配对。",
+      toast.success("已记在本浏览器里", {
+        description: "仅本页面、本设备内会与之后提交的记录做匹配。",
       });
     }
 
@@ -184,7 +164,7 @@ export default function SubmitForm() {
 
   const copyMatchBlock = async () => {
     if (!lastNewPost) return;
-    const text = formatMatchSummaryForAdmin(lastNewPost, lastMatches);
+    const text = formatMatchSummary(lastNewPost, lastMatches);
     try {
       await navigator.clipboard.writeText(text);
       toast.success("已复制到剪贴板");
@@ -207,31 +187,12 @@ export default function SubmitForm() {
             <DialogTitle className="font-serif-display text-xl text-warm-gray">
               匹配成功
             </DialogTitle>
-            <DialogDescription className="text-warm-gray/70 text-left space-y-2">
-              <span className="block">
-                双方都已留微信。请分别添加并拉群；下方可复制完整信息。
-              </span>
-              {notifyOk && notifyChannel === "ntfy" ? (
-                <span className="block text-coral font-medium">
-                  已向你的 ntfy 主题发送一条推送提醒。
-                </span>
-              ) : null}
-              {notifyOk && notifyChannel === "mailto" ? (
-                <span className="block text-coral font-medium">
-                  若系统允许，应已打开邮件草稿；否则请查看弹窗内信息。
-                </span>
-              ) : null}
-              {notifyOk === false ? (
-                <span className="block text-amber-800/90">
-                  推送未成功或未配置环境变量，请以弹窗内信息为准完成拉群。
-                </span>
-              ) : null}
+            <DialogDescription className="text-warm-gray/70 text-left">
+              仅根据本机已保存的发布记录做简单判断（区域文案 + 租金是否在预算内）。下方可复制双方微信等信息。
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[40vh] overflow-y-auto rounded-xl border border-gray-200 bg-white/80 p-4 text-sm text-warm-gray/90 whitespace-pre-wrap font-mono leading-relaxed">
-            {lastNewPost
-              ? formatMatchSummaryForAdmin(lastNewPost, lastMatches)
-              : ""}
+            {lastNewPost ? formatMatchSummary(lastNewPost, lastMatches) : ""}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
@@ -270,7 +231,7 @@ export default function SubmitForm() {
               {postType === "rental"
                 ? "有房要出租？填写房源信息，我们帮你找到正在找房的女孩子。"
                 : "正在找房住？发布你的需求，匹配到有房出租的姐妹。"}
-              请留下微信号；匹配成功后会提醒站长，由站长加你们微信并拉群。
+              请留下微信号。匹配仅在本浏览器内自动判断，命中后弹窗展示，可自行复制联系。
             </p>
 
             <div className="hidden lg:block">
@@ -339,7 +300,7 @@ export default function SubmitForm() {
                   />
                   <input
                     type="text"
-                    placeholder="微信号（站长匹配后加你拉群）"
+                    placeholder="微信号（方便对上后联系）"
                     className={inputClasses}
                     required
                     autoComplete="off"

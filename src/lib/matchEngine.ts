@@ -73,12 +73,13 @@ export function findMatchesForPost(
   );
 }
 
-export function formatMatchSummaryForAdmin(
+/** 纯前端匹配结果，便于弹窗展示或复制（数据仅存本机浏览器）。 */
+export function formatMatchSummary(
   newPost: DemandPost,
   matches: DemandPost[]
 ): string {
   const lines: string[] = [];
-  lines.push("姐妹找房 · 系统判定一组可拉群的需求");
+  lines.push("姐妹找房 · 本机匹配结果（区域 + 预算）");
   lines.push("");
   lines.push("【刚发布】");
   lines.push(formatOnePost(newPost));
