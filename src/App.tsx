@@ -1,3 +1,4 @@
+import { Toaster } from "sonner";
 import { useLenis } from "@/hooks/useLenis";
 import Navbar from "@/sections/Navbar";
 import HeroSection from "@/sections/HeroSection";
@@ -11,6 +12,7 @@ function App() {
 
   return (
     <div className="relative">
+      <Toaster position="top-center" richColors closeButton />
       <Navbar />
       <main>
         <HeroSection />
