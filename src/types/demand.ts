@@ -7,13 +7,18 @@ export type DemandPostBase = {
   location: string;
   wechat: string;
   description: string;
+  /** 租赁房型 */
+  leaseLayout: string;
+  /** 租赁期限 */
+  leaseTerm: string;
+  /** 特殊要求（多选结果，有序） */
+  specialRequirements: string[];
 };
 
 export type RentalPost = DemandPostBase & {
   type: "rental";
   weeklyRentMin: number;
   weeklyRentMax: number;
-  roomType: string;
 };
 
 export type SeekingPost = DemandPostBase & {

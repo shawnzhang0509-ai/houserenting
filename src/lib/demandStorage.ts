@@ -1,6 +1,7 @@
 import type { DemandPost } from "@/types/demand";
+import { SPECIAL_REQUIREMENT_OPTIONS } from "@/data/leaseFields";
 
-const STORAGE_KEY = "jiejie-demand-posts-nz-v1";
+const STORAGE_KEY = "jiejie-demand-posts-nz-v2";
 
 function safeParse(raw: string | null): DemandPost[] {
   if (!raw) return [];
@@ -13,6 +14,12 @@ function safeParse(raw: string | null): DemandPost[] {
   }
 }
 
+function isSpecialRequirementsList(v: unknown): v is string[] {
+  if (!Array.isArray(v)) return false;
+  const allowed = new Set<string>([...SPECIAL_REQUIREMENT_OPTIONS]);
+  return v.every((x) => typeof x === "string" && allowed.has(x));
+}
+
 function isDemandPost(v: unknown): v is DemandPost {
   if (!v || typeof v !== "object") return false;
   const o = v as Record<string, unknown>;
@@ -21,11 +28,12 @@ function isDemandPost(v: unknown): v is DemandPost {
   if (typeof o.location !== "string" || typeof o.wechat !== "string") return false;
   if (typeof o.description !== "string") return false;
   if (typeof o.createdAt !== "number") return false;
+  if (typeof o.leaseLayout !== "string" || typeof o.leaseTerm !== "string") return false;
+  if (!isSpecialRequirementsList(o.specialRequirements)) return false;
   if (o.type === "rental") {
     return (
       typeof o.weeklyRentMin === "number" &&
-      typeof o.weeklyRentMax === "number" &&
-      typeof o.roomType === "string"
+      typeof o.weeklyRentMax === "number"
     );
   }
   return (
