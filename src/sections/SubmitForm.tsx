@@ -28,8 +28,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { appendDemandPost } from "@/lib/demandStorage";
 import { findMatchesForPost, formatMatchSummary } from "@/lib/matchEngine";
 import { cn } from "@/lib/utils";
@@ -266,10 +264,18 @@ export default function SubmitForm() {
     "pl-4 text-left font-normal"
   );
 
+  const choiceBlock = (active: boolean) =>
+    cn(
+      "w-full rounded-xl border px-4 py-3.5 text-left text-sm font-medium leading-snug transition-all duration-200",
+      active
+        ? "border-coral bg-coral/10 text-coral shadow-sm ring-1 ring-coral/20"
+        : "border-gray-200 bg-white text-warm-gray hover:border-coral/35 active:scale-[0.99]"
+    );
+
   return (
     <section
       id="submit-form"
-      className="relative min-h-[100dvh] bg-white flex items-center overflow-hidden"
+      className="relative min-h-[100dvh] bg-white overflow-x-hidden py-10 sm:py-14 lg:flex lg:items-center lg:py-[80px] lg:min-h-[100dvh]"
     >
       <Dialog open={matchDialogOpen} onOpenChange={setMatchDialogOpen}>
         <DialogContent className="bg-[#FFF8F0] border-coral/15 text-warm-gray sm:max-w-lg">
@@ -306,8 +312,8 @@ export default function SubmitForm() {
 
       <div className="absolute left-0 top-0 bottom-0 w-[20%] bg-soft-purple/10 hidden lg:block" />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 py-[80px] md:py-[120px] w-full">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 w-full">
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-20 lg:items-center">
           <div>
             <p className="text-sm font-medium text-coral tracking-widest mb-4">
               发布信息
@@ -338,7 +344,7 @@ export default function SubmitForm() {
           <div ref={formRef}>
             <form
               onSubmit={handleSubmit}
-              className="max-w-md mx-auto lg:mx-0 lg:ml-auto bg-white rounded-2xl p-8 md:p-10 shadow-lg border border-gray-100"
+              className="max-w-md mx-auto lg:mx-0 lg:ml-auto bg-white rounded-2xl p-5 sm:p-8 md:p-10 shadow-lg border border-gray-100 pb-8"
             >
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-3">
@@ -424,71 +430,69 @@ export default function SubmitForm() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-warm-gray/50 pl-1">
-                    租赁房型
+                <p className="text-xs text-coral/90 font-medium -mt-2 md:hidden">
+                  请继续向下填写：租期、特殊要求、房型与周租金
+                </p>
+
+                <div className="rounded-2xl border border-coral/15 bg-cream/50 p-4 space-y-3">
+                  <p className="text-sm font-semibold text-warm-gray">
+                    租赁期限 <span className="text-coral">*</span>
                   </p>
-                  <Select
-                    value={leaseLayout || undefined}
-                    onValueChange={setLeaseLayout}
-                  >
-                    <SelectTrigger className={selectTriggerPlain}>
-                      <SelectValue placeholder="选择租赁房型" />
-                    </SelectTrigger>
-                    <SelectContent
-                      position="popper"
-                      className="max-h-[min(280px,70vh)] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]"
-                    >
-                      {LEASE_LAYOUT_OPTIONS.map((opt) => (
-                        <SelectItem key={opt} value={opt}>
-                          {opt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    {LEASE_TERM_OPTIONS.map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setLeaseTerm(opt)}
+                        className={choiceBlock(leaseTerm === opt)}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-warm-gray/50 pl-1">
-                    租赁期限
+                <div className="rounded-2xl border border-coral/15 bg-cream/50 p-4 space-y-3">
+                  <p className="text-sm font-semibold text-warm-gray">
+                    特殊要求 <span className="text-warm-gray/50 font-normal text-xs">（可多选）</span>
                   </p>
-                  <Select
-                    value={leaseTerm || undefined}
-                    onValueChange={setLeaseTerm}
-                  >
-                    <SelectTrigger className={selectTriggerPlain}>
-                      <SelectValue placeholder="选择租赁期限" />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      {LEASE_TERM_OPTIONS.map((opt) => (
-                        <SelectItem key={opt} value={opt}>
-                          {opt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-3 rounded-xl border border-gray-100 bg-cream/40 p-4">
-                  <p className="text-xs font-medium text-warm-gray/50">
-                    特殊要求（可多选）
-                  </p>
-                  <div className="flex flex-col gap-3">
-                    {SPECIAL_REQUIREMENT_OPTIONS.map((opt) => (
-                      <div key={opt} className="flex items-center gap-3">
-                        <Checkbox
-                          id={`special-${opt}`}
-                          checked={specialSelected.has(opt)}
-                          onCheckedChange={() => toggleSpecial(opt)}
-                          className="border-warm-gray/30 data-[state=checked]:bg-coral data-[state=checked]:border-coral"
-                        />
-                        <Label
-                          htmlFor={`special-${opt}`}
-                          className="text-sm font-normal text-warm-gray cursor-pointer"
+                  <div className="flex flex-wrap gap-2">
+                    {SPECIAL_REQUIREMENT_OPTIONS.map((opt) => {
+                      const on = specialSelected.has(opt);
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => toggleSpecial(opt)}
+                          className={cn(
+                            "rounded-full border px-4 py-2.5 text-sm font-medium transition-all duration-200 min-h-[44px]",
+                            on
+                              ? "border-coral bg-coral text-white shadow-sm"
+                              : "border-gray-200 bg-white text-warm-gray hover:border-coral/40"
+                          )}
+                          aria-pressed={on}
                         >
                           {opt}
-                        </Label>
-                      </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-warm-gray">
+                    租赁房型 <span className="text-coral">*</span>
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {LEASE_LAYOUT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setLeaseLayout(opt)}
+                        className={choiceBlock(leaseLayout === opt)}
+                      >
+                        {opt}
+                      </button>
                     ))}
                   </div>
                 </div>
