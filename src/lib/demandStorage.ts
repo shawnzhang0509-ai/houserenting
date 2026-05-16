@@ -1,6 +1,6 @@
 import type { DemandPost } from "@/types/demand";
 
-const STORAGE_KEY = "jiejie-demand-posts-v1";
+const STORAGE_KEY = "jiejie-demand-posts-nz-v1";
 
 function safeParse(raw: string | null): DemandPost[] {
   if (!raw) return [];
@@ -22,11 +22,15 @@ function isDemandPost(v: unknown): v is DemandPost {
   if (typeof o.description !== "string") return false;
   if (typeof o.createdAt !== "number") return false;
   if (o.type === "rental") {
-    return typeof o.monthlyRent === "number" && typeof o.roomType === "string";
+    return (
+      typeof o.weeklyRentMin === "number" &&
+      typeof o.weeklyRentMax === "number" &&
+      typeof o.roomType === "string"
+    );
   }
   return (
-    typeof o.budgetMin === "number" &&
-    typeof o.budgetMax === "number" &&
+    typeof o.budgetWeeklyMin === "number" &&
+    typeof o.budgetWeeklyMax === "number" &&
     typeof o.moveInDate === "string"
   );
 }

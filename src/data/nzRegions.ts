@@ -1,0 +1,31 @@
+/** 房屋区域下拉选项（value 与展示文案一致，用于存储与匹配） */
+export const NZ_REGION_OPTIONS = [
+  "奥克兰北岸 Auckland North Shore",
+  "奥克兰中区 Auckland Central",
+  "奥克兰东区 Auckland East",
+  "奥克兰南区 Auckland South",
+  "奥克兰西区 Auckland West",
+  "奥克兰西北区 Auckland Northwest",
+  "北地 Northland",
+  "汉密尔顿 Hamilton",
+  "陶朗加 Tauranga",
+  "罗托鲁瓦 Rotorua",
+  "陶波 Taupō",
+  "吉斯本 Gisborne",
+  "霍克湾 Hawke's Bay",
+  "新普利茅斯 New Plymouth",
+  "旺阿雷 Whangārei",
+  "旺加努伊 Whanganui",
+  "帕默北 Palmerston North",
+  "惠灵顿 Wellington",
+  "纳尔逊 Nelson",
+  "布伦海姆 Blenheim",
+  "基督城 Christchurch",
+  "提马鲁 Timaru",
+  "皇后镇 Queenstown",
+  "瓦纳卡 Wānaka",
+  "达尼丁 Dunedin",
+  "因弗卡吉尔 Invercargill",
+] as const;
+
+export type NzRegion = (typeof NZ_REGION_OPTIONS)[number];
