@@ -11,14 +11,15 @@ export type DemandPostBase = {
 
 export type RentalPost = DemandPostBase & {
   type: "rental";
-  monthlyRent: number;
+  weeklyRentMin: number;
+  weeklyRentMax: number;
   roomType: string;
 };
 
 export type SeekingPost = DemandPostBase & {
   type: "seeking";
-  budgetMin: number;
-  budgetMax: number;
+  budgetWeeklyMin: number;
+  budgetWeeklyMax: number;
   moveInDate: string;
 };
 

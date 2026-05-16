@@ -5,10 +5,10 @@ interface DemandCardProps {
   nickname: string;
   location: string;
   description: string;
-  price?: string;       // 招租：月租金
-  roomType?: string;    // 招租：房型
-  budget?: string;      // 找租：预算范围
-  moveInDate?: string;  // 找租：入住时间
+  price?: string; // 招租：周租金展示
+  roomType?: string;
+  budget?: string; // 找租：周预算展示
+  moveInDate?: string;
   color: string;
   onClick?: () => void;
 }
@@ -97,7 +97,7 @@ export default function DemandCard({
           {isRental && price && (
             <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${tc.bg} ${tc.text}`}>
               <BedDouble className="w-3 h-3" />
-              {price}/月
+              {price}/周
             </span>
           )}
           {isRental && roomType && (

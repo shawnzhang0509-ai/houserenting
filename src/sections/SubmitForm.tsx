@@ -20,12 +20,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { appendDemandPost } from "@/lib/demandStorage";
+import { findMatchesForPost, formatMatchSummary } from "@/lib/matchEngine";
+import { cn } from "@/lib/utils";
+import { NZ_REGION_OPTIONS } from "@/data/nzRegions";
 import {
-  findMatchesForPost,
-  formatMatchSummary,
-} from "@/lib/matchEngine";
+  NZ_WEEKLY_RENT_BRACKETS,
+  getWeeklyRentBracketById,
+  formatWeeklyRentBracketLabel,
+} from "@/data/nzWeeklyRentBrackets";
 import type { DemandPost, PostType } from "@/types/demand";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -39,6 +50,18 @@ function newId(): string {
   return `p-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function mergeSeekingBudgetBrackets(
+  idA: string,
+  idB: string
+): { min: number; max: number } | null {
+  const ba = getWeeklyRentBracketById(idA);
+  const bb = getWeeklyRentBracketById(idB);
+  if (!ba || !bb) return null;
+  const lowBracket = ba.min <= bb.min ? ba : bb;
+  const highBracket = lowBracket === ba ? bb : ba;
+  return { min: lowBracket.min, max: highBracket.max };
+}
+
 export default function SubmitForm() {
   const [status, setStatus] = useState<FormStatus>("idle");
   const [postType, setPostType] = useState<PostType>("rental");
@@ -49,11 +72,11 @@ export default function SubmitForm() {
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
 
-  const [monthlyRent, setMonthlyRent] = useState("");
+  const [rentBracketId, setRentBracketId] = useState("");
   const [roomType, setRoomType] = useState("");
 
-  const [budgetMin, setBudgetMin] = useState("");
-  const [budgetMax, setBudgetMax] = useState("");
+  const [budgetBracketLowId, setBudgetBracketLowId] = useState("");
+  const [budgetBracketHighId, setBudgetBracketHighId] = useState("");
   const [moveInDate, setMoveInDate] = useState("");
 
   const [matchDialogOpen, setMatchDialogOpen] = useState(false);
@@ -89,28 +112,38 @@ export default function SubmitForm() {
     setWechat("");
     setLocation("");
     setDescription("");
-    setMonthlyRent("");
+    setRentBracketId("");
     setRoomType("");
-    setBudgetMin("");
-    setBudgetMax("");
+    setBudgetBracketLowId("");
+    setBudgetBracketHighId("");
     setMoveInDate("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const rentNum = Number(monthlyRent);
-    const bMin = Number(budgetMin);
-    const bMax = Number(budgetMax);
+    if (!location.trim()) {
+      toast.error("请选择房屋区域");
+      return;
+    }
 
     if (postType === "rental") {
-      if (!Number.isFinite(rentNum) || rentNum <= 0) {
-        toast.error("请填写有效的月租金");
+      const br = getWeeklyRentBracketById(rentBracketId);
+      if (!br) {
+        toast.error("请选择周租金区间（纽币）");
         return;
       }
     } else {
-      if (!Number.isFinite(bMin) || !Number.isFinite(bMax) || bMin <= 0 || bMax <= 0) {
-        toast.error("请填写有效的预算区间");
+      if (!budgetBracketLowId || !budgetBracketHighId) {
+        toast.error("请选择周预算区间（纽币）");
+        return;
+      }
+      const merged = mergeSeekingBudgetBrackets(
+        budgetBracketLowId,
+        budgetBracketHighId
+      );
+      if (!merged) {
+        toast.error("周预算档位无效");
         return;
       }
     }
@@ -126,21 +159,30 @@ export default function SubmitForm() {
       description: description.trim(),
     };
 
-    const newPost: DemandPost =
-      postType === "rental"
-        ? {
-            ...base,
-            type: "rental",
-            monthlyRent: rentNum,
-            roomType: roomType.trim(),
-          }
-        : {
-            ...base,
-            type: "seeking",
-            budgetMin: bMin,
-            budgetMax: bMax,
-            moveInDate: moveInDate,
-          };
+    let newPost: DemandPost;
+
+    if (postType === "rental") {
+      const br = getWeeklyRentBracketById(rentBracketId)!;
+      newPost = {
+        ...base,
+        type: "rental",
+        weeklyRentMin: br.min,
+        weeklyRentMax: br.max,
+        roomType: roomType.trim(),
+      };
+    } else {
+      const merged = mergeSeekingBudgetBrackets(
+        budgetBracketLowId,
+        budgetBracketHighId
+      )!;
+      newPost = {
+        ...base,
+        type: "seeking",
+        budgetWeeklyMin: merged.min,
+        budgetWeeklyMax: merged.max,
+        moveInDate: moveInDate,
+      };
+    }
 
     const allAfter = appendDemandPost(newPost);
     const others = allAfter.filter((p) => p.id !== newPost.id);
@@ -176,6 +218,12 @@ export default function SubmitForm() {
   const inputClasses =
     "w-full h-12 px-4 pl-11 rounded-xl border border-gray-200 bg-white text-warm-gray text-base placeholder:text-warm-gray/40 outline-none transition-all duration-200 focus:border-coral focus:shadow-[0_0_0_3px_rgba(255,107,107,0.15)]";
 
+  const selectTriggerClass = cn(
+    "w-full h-12 pl-11 pr-10 rounded-xl border border-gray-200 bg-white text-warm-gray text-base outline-none transition-all duration-200",
+    "focus:border-coral focus:shadow-[0_0_0_3px_rgba(255,107,107,0.15)]",
+    "data-[placeholder]:text-warm-gray/40"
+  );
+
   return (
     <section
       id="submit-form"
@@ -188,7 +236,7 @@ export default function SubmitForm() {
               匹配成功
             </DialogTitle>
             <DialogDescription className="text-warm-gray/70 text-left">
-              仅根据本机已保存的发布记录做简单判断（区域文案 + 租金是否在预算内）。下方可复制双方微信等信息。
+              仅根据本机已保存的发布记录判断：区域相同，且周租金区间与周预算区间有重叠。下方可复制双方微信等信息。
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[40vh] overflow-y-auto rounded-xl border border-gray-200 bg-white/80 p-4 text-sm text-warm-gray/90 whitespace-pre-wrap font-mono leading-relaxed">
@@ -231,7 +279,7 @@ export default function SubmitForm() {
               {postType === "rental"
                 ? "有房要出租？填写房源信息，我们帮你找到正在找房的女孩子。"
                 : "正在找房住？发布你的需求，匹配到有房出租的姐妹。"}
-              请留下微信号。匹配仅在本浏览器内自动判断，命中后弹窗展示，可自行复制联系。
+              区域与纽币周租金均为选项；请留下微信号。匹配仅在本浏览器内判断，命中后弹窗展示。
             </p>
 
             <div className="hidden lg:block">
@@ -280,7 +328,7 @@ export default function SubmitForm() {
 
                 <div className="relative">
                   <User
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray/40"
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray/40 z-10 pointer-events-none"
                     strokeWidth={1.5}
                   />
                   <input
@@ -295,7 +343,7 @@ export default function SubmitForm() {
 
                 <div className="relative">
                   <MessageCircle
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray/40"
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray/40 z-10 pointer-events-none"
                     strokeWidth={1.5}
                   />
                   <input
@@ -311,39 +359,62 @@ export default function SubmitForm() {
 
                 <div className="relative">
                   <MapPin
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray/40"
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray/40 z-10 pointer-events-none"
                     strokeWidth={1.5}
                   />
-                  <input
-                    type="text"
-                    placeholder="房屋位置 / 期望区域"
-                    className={inputClasses}
-                    required
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                  />
+                  <Select
+                    value={location || undefined}
+                    onValueChange={setLocation}
+                  >
+                    <SelectTrigger className={selectTriggerClass}>
+                      <SelectValue placeholder="选择房屋区域" />
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper"
+                      className="max-h-[min(320px,70vh)] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]"
+                    >
+                      {NZ_REGION_OPTIONS.map((region) => (
+                        <SelectItem key={region} value={region}>
+                          {region}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {postType === "rental" ? (
                   <>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-warm-gray/40 text-sm">
-                        &yen;
-                      </span>
-                      <input
-                        type="number"
-                        min={1}
-                        step={1}
-                        placeholder="月租金"
-                        className={`${inputClasses} pl-8`}
-                        required
-                        value={monthlyRent}
-                        onChange={(e) => setMonthlyRent(e.target.value)}
-                      />
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-warm-gray/50 pl-1">
+                        周租金（纽币，$50 一档）
+                      </p>
+                      <Select
+                        value={rentBracketId || undefined}
+                        onValueChange={setRentBracketId}
+                      >
+                        <SelectTrigger
+                          className={cn(
+                            selectTriggerClass,
+                            "pl-4 text-left font-normal"
+                          )}
+                        >
+                          <SelectValue placeholder="选择周租金区间" />
+                        </SelectTrigger>
+                        <SelectContent
+                          position="popper"
+                          className="max-h-[min(320px,70vh)] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]"
+                        >
+                          {NZ_WEEKLY_RENT_BRACKETS.map((b) => (
+                            <SelectItem key={b.id} value={b.id}>
+                              {formatWeeklyRentBracketLabel(b)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="relative">
                       <Home
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray/40"
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray/40 z-10 pointer-events-none"
                         strokeWidth={1.5}
                       />
                       <input
@@ -358,41 +429,62 @@ export default function SubmitForm() {
                   </>
                 ) : (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-warm-gray/40 text-sm">
-                          &yen;
-                        </span>
-                        <input
-                          type="number"
-                          min={1}
-                          step={1}
-                          placeholder="最低预算"
-                          className={`${inputClasses} pl-8`}
-                          required
-                          value={budgetMin}
-                          onChange={(e) => setBudgetMin(e.target.value)}
-                        />
-                      </div>
-                      <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-warm-gray/40 text-sm">
-                          &yen;
-                        </span>
-                        <input
-                          type="number"
-                          min={1}
-                          step={1}
-                          placeholder="最高预算"
-                          className={`${inputClasses} pl-8`}
-                          required
-                          value={budgetMax}
-                          onChange={(e) => setBudgetMax(e.target.value)}
-                        />
+                    <div className="space-y-3">
+                      <p className="text-xs font-medium text-warm-gray/50 pl-1">
+                        周预算（纽币）：选较低与较高两档，自动合并为总区间
+                      </p>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <Select
+                          value={budgetBracketLowId || undefined}
+                          onValueChange={setBudgetBracketLowId}
+                        >
+                          <SelectTrigger
+                            className={cn(
+                              selectTriggerClass,
+                              "pl-4 text-left font-normal"
+                            )}
+                          >
+                            <SelectValue placeholder="周预算（较低档）" />
+                          </SelectTrigger>
+                          <SelectContent
+                            position="popper"
+                            className="max-h-[min(280px,60vh)] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]"
+                          >
+                            {NZ_WEEKLY_RENT_BRACKETS.map((b) => (
+                              <SelectItem key={`lo-${b.id}`} value={b.id}>
+                                {formatWeeklyRentBracketLabel(b)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={budgetBracketHighId || undefined}
+                          onValueChange={setBudgetBracketHighId}
+                        >
+                          <SelectTrigger
+                            className={cn(
+                              selectTriggerClass,
+                              "pl-4 text-left font-normal"
+                            )}
+                          >
+                            <SelectValue placeholder="周预算（较高档）" />
+                          </SelectTrigger>
+                          <SelectContent
+                            position="popper"
+                            className="max-h-[min(280px,60vh)] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]"
+                          >
+                            {NZ_WEEKLY_RENT_BRACKETS.map((b) => (
+                              <SelectItem key={`hi-${b.id}`} value={b.id}>
+                                {formatWeeklyRentBracketLabel(b)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     <div className="relative">
                       <Calendar
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray/40"
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray/40 z-10 pointer-events-none"
                         strokeWidth={1.5}
                       />
                       <input

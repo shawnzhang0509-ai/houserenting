@@ -15,18 +15,21 @@ function locationTokens(s: string): string[] {
     .map(normalizeToken);
 }
 
-/** 区域是否可能一致（关键词包含或重叠） */
+/** 区域一致：下拉相同值优先；兼容旧数据仍做轻量关键词匹配 */
 export function locationsLikelyMatch(a: string, b: string): boolean {
+  const ta = a.trim();
+  const tb = b.trim();
+  if (ta === tb) return true;
   const na = normalizeToken(a);
   const nb = normalizeToken(b);
   if (na.length >= 2 && nb.length >= 2) {
     if (na === nb) return true;
     if (na.includes(nb) || nb.includes(na)) return true;
   }
-  const ta = locationTokens(a);
-  const tb = locationTokens(b);
-  for (const pa of ta) {
-    for (const pb of tb) {
+  const toksA = locationTokens(a);
+  const toksB = locationTokens(b);
+  for (const pa of toksA) {
+    for (const pb of toksB) {
       if (pa.length < 2 || pb.length < 2) continue;
       if (pa === pb) return true;
       if (pa.includes(pb) || pb.includes(pa)) return true;
@@ -35,23 +38,32 @@ export function locationsLikelyMatch(a: string, b: string): boolean {
   return false;
 }
 
-export function budgetContainsRent(
-  seeking: SeekingPost,
-  monthlyRent: number
+/** 闭区间 [a,b] 与 [c,d] 是否有交集 */
+function closedIntervalsOverlap(
+  a1: number,
+  a2: number,
+  b1: number,
+  b2: number
 ): boolean {
-  const lo = Math.min(seeking.budgetMin, seeking.budgetMax);
-  const hi = Math.max(seeking.budgetMin, seeking.budgetMax);
-  return monthlyRent >= lo && monthlyRent <= hi;
+  const loA = Math.min(a1, a2);
+  const hiA = Math.max(a1, a2);
+  const loB = Math.min(b1, b2);
+  const hiB = Math.max(b1, b2);
+  return loA <= hiB && loB <= hiA;
 }
 
-/** 一条出租与一条求租是否互相满足当前规则（区域 + 租金落在预算内） */
+/** 一条出租与一条求租：区域 + 周租金区间有交集 */
 export function rentalAndSeekingMatch(
   rental: RentalPost,
   seeking: SeekingPost
 ): boolean {
   if (!locationsLikelyMatch(rental.location, seeking.location)) return false;
-  if (!budgetContainsRent(seeking, rental.monthlyRent)) return false;
-  return true;
+  return closedIntervalsOverlap(
+    rental.weeklyRentMin,
+    rental.weeklyRentMax,
+    seeking.budgetWeeklyMin,
+    seeking.budgetWeeklyMax
+  );
 }
 
 /** 给定刚发布的一条，在其余帖子中找相反类型的匹配 */
@@ -79,7 +91,7 @@ export function formatMatchSummary(
   matches: DemandPost[]
 ): string {
   const lines: string[] = [];
-  lines.push("姐妹找房 · 本机匹配结果（区域 + 预算）");
+  lines.push("姐妹找房 · 本机匹配结果（区域 + 周租金区间）");
   lines.push("");
   lines.push("【刚发布】");
   lines.push(formatOnePost(newPost));
@@ -102,12 +114,12 @@ function formatOnePost(p: DemandPost): string {
 补充：${p.description || "（无）"}`;
   if (p.type === "rental") {
     return `${base}
-月租：${p.monthlyRent}
+周租（纽币）：$${p.weeklyRentMin} – $${p.weeklyRentMax} / 周
 房型：${p.roomType}`;
   }
-  const lo = Math.min(p.budgetMin, p.budgetMax);
-  const hi = Math.max(p.budgetMin, p.budgetMax);
+  const lo = Math.min(p.budgetWeeklyMin, p.budgetWeeklyMax);
+  const hi = Math.max(p.budgetWeeklyMin, p.budgetWeeklyMax);
   return `${base}
-预算：${lo}–${hi} 元/月
+周预算（纽币）：$${lo} – $${hi} / 周
 希望入住：${p.moveInDate}`;
 }
