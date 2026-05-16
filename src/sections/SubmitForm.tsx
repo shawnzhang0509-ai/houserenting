@@ -37,6 +37,11 @@ import {
   getWeeklyRentBracketById,
   formatWeeklyRentBracketLabel,
 } from "@/data/nzWeeklyRentBrackets";
+import {
+  LEASE_LAYOUT_OPTIONS,
+  LEASE_TERM_OPTIONS,
+  SPECIAL_REQUIREMENT_OPTIONS,
+} from "@/data/leaseFields";
 import type { DemandPost, PostType } from "@/types/demand";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -72,8 +77,13 @@ export default function SubmitForm() {
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
 
+  const [leaseLayout, setLeaseLayout] = useState("");
+  const [leaseTerm, setLeaseTerm] = useState("");
+  const [specialSelected, setSpecialSelected] = useState<Set<string>>(
+    () => new Set()
+  );
+
   const [rentBracketId, setRentBracketId] = useState("");
-  const [roomType, setRoomType] = useState("");
 
   const [budgetBracketLowId, setBudgetBracketLowId] = useState("");
   const [budgetBracketHighId, setBudgetBracketHighId] = useState("");
@@ -107,13 +117,28 @@ export default function SubmitForm() {
     };
   }, []);
 
+  const toggleSpecial = (key: string) => {
+    setSpecialSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const orderedSpecials = SPECIAL_REQUIREMENT_OPTIONS.filter((o) =>
+    specialSelected.has(o)
+  );
+
   const resetFields = () => {
     setNickname("");
     setWechat("");
     setLocation("");
     setDescription("");
+    setLeaseLayout("");
+    setLeaseTerm("");
+    setSpecialSelected(new Set());
     setRentBracketId("");
-    setRoomType("");
     setBudgetBracketLowId("");
     setBudgetBracketHighId("");
     setMoveInDate("");
@@ -124,6 +149,14 @@ export default function SubmitForm() {
 
     if (!location.trim()) {
       toast.error("请选择房屋区域");
+      return;
+    }
+    if (!leaseLayout) {
+      toast.error("请选择租赁房型");
+      return;
+    }
+    if (!leaseTerm) {
+      toast.error("请选择租赁期限");
       return;
     }
 
@@ -157,6 +190,9 @@ export default function SubmitForm() {
       location: location.trim(),
       wechat: wechat.trim(),
       description: description.trim(),
+      leaseLayout,
+      leaseTerm,
+      specialRequirements: orderedSpecials,
     };
 
     let newPost: DemandPost;
@@ -168,7 +204,6 @@ export default function SubmitForm() {
         type: "rental",
         weeklyRentMin: br.min,
         weeklyRentMax: br.max,
-        roomType: roomType.trim(),
       };
     } else {
       const merged = mergeSeekingBudgetBrackets(
@@ -224,10 +259,23 @@ export default function SubmitForm() {
     "data-[placeholder]:text-warm-gray/40"
   );
 
+  const selectTriggerPlain = cn(
+    selectTriggerClass,
+    "pl-4 text-left font-normal"
+  );
+
+  const choiceBlock = (active: boolean) =>
+    cn(
+      "w-full rounded-xl border px-4 py-3.5 text-left text-sm font-medium leading-snug transition-all duration-200",
+      active
+        ? "border-coral bg-coral/10 text-coral shadow-sm ring-1 ring-coral/20"
+        : "border-gray-200 bg-white text-warm-gray hover:border-coral/35 active:scale-[0.99]"
+    );
+
   return (
     <section
       id="submit-form"
-      className="relative min-h-[100dvh] bg-white flex items-center overflow-hidden"
+      className="relative min-h-[100dvh] bg-white overflow-x-hidden py-10 sm:py-14 lg:flex lg:items-center lg:py-[80px] lg:min-h-[100dvh]"
     >
       <Dialog open={matchDialogOpen} onOpenChange={setMatchDialogOpen}>
         <DialogContent className="bg-[#FFF8F0] border-coral/15 text-warm-gray sm:max-w-lg">
@@ -236,7 +284,7 @@ export default function SubmitForm() {
               匹配成功
             </DialogTitle>
             <DialogDescription className="text-warm-gray/70 text-left">
-              仅根据本机已保存的发布记录判断：区域相同，且周租金区间与周预算区间有重叠。下方可复制双方微信等信息。
+              本机判断：区域相同，租赁房型与期限一致，周租金与周预算区间有重叠，且求租方勾选的特殊要求出租方均已勾选。下方可复制双方微信等信息。
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[40vh] overflow-y-auto rounded-xl border border-gray-200 bg-white/80 p-4 text-sm text-warm-gray/90 whitespace-pre-wrap font-mono leading-relaxed">
@@ -264,8 +312,8 @@ export default function SubmitForm() {
 
       <div className="absolute left-0 top-0 bottom-0 w-[20%] bg-soft-purple/10 hidden lg:block" />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 py-[80px] md:py-[120px] w-full">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 w-full">
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-20 lg:items-center">
           <div>
             <p className="text-sm font-medium text-coral tracking-widest mb-4">
               发布信息
@@ -279,7 +327,7 @@ export default function SubmitForm() {
               {postType === "rental"
                 ? "有房要出租？填写房源信息，我们帮你找到正在找房的女孩子。"
                 : "正在找房住？发布你的需求，匹配到有房出租的姐妹。"}
-              区域与纽币周租金均为选项；请留下微信号。匹配仅在本浏览器内判断，命中后弹窗展示。
+              区域、房型、期限与纽币周租金均为选项；特殊要求可多选。求租方勾选的特殊项须出租方也勾选才会匹配。
             </p>
 
             <div className="hidden lg:block">
@@ -296,7 +344,7 @@ export default function SubmitForm() {
           <div ref={formRef}>
             <form
               onSubmit={handleSubmit}
-              className="max-w-md mx-auto lg:mx-0 lg:ml-auto bg-white rounded-2xl p-8 md:p-10 shadow-lg border border-gray-100"
+              className="max-w-md mx-auto lg:mx-0 lg:ml-auto bg-white rounded-2xl p-5 sm:p-8 md:p-10 shadow-lg border border-gray-100 pb-8"
             >
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-3">
@@ -382,51 +430,97 @@ export default function SubmitForm() {
                   </Select>
                 </div>
 
-                {postType === "rental" ? (
-                  <>
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-warm-gray/50 pl-1">
-                        周租金（纽币，$50 一档）
-                      </p>
-                      <Select
-                        value={rentBracketId || undefined}
-                        onValueChange={setRentBracketId}
+                <p className="text-xs text-coral/90 font-medium -mt-2 md:hidden">
+                  请继续向下填写：租期、特殊要求、房型与周租金
+                </p>
+
+                <div className="rounded-2xl border border-coral/15 bg-cream/50 p-4 space-y-3">
+                  <p className="text-sm font-semibold text-warm-gray">
+                    租赁期限 <span className="text-coral">*</span>
+                  </p>
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    {LEASE_TERM_OPTIONS.map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setLeaseTerm(opt)}
+                        className={choiceBlock(leaseTerm === opt)}
                       >
-                        <SelectTrigger
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-coral/15 bg-cream/50 p-4 space-y-3">
+                  <p className="text-sm font-semibold text-warm-gray">
+                    特殊要求 <span className="text-warm-gray/50 font-normal text-xs">（可多选）</span>
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {SPECIAL_REQUIREMENT_OPTIONS.map((opt) => {
+                      const on = specialSelected.has(opt);
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => toggleSpecial(opt)}
                           className={cn(
-                            selectTriggerClass,
-                            "pl-4 text-left font-normal"
+                            "rounded-full border px-4 py-2.5 text-sm font-medium transition-all duration-200 min-h-[44px]",
+                            on
+                              ? "border-coral bg-coral text-white shadow-sm"
+                              : "border-gray-200 bg-white text-warm-gray hover:border-coral/40"
                           )}
+                          aria-pressed={on}
                         >
-                          <SelectValue placeholder="选择周租金区间" />
-                        </SelectTrigger>
-                        <SelectContent
-                          position="popper"
-                          className="max-h-[min(320px,70vh)] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]"
-                        >
-                          {NZ_WEEKLY_RENT_BRACKETS.map((b) => (
-                            <SelectItem key={b.id} value={b.id}>
-                              {formatWeeklyRentBracketLabel(b)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="relative">
-                      <Home
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray/40 z-10 pointer-events-none"
-                        strokeWidth={1.5}
-                      />
-                      <input
-                        type="text"
-                        placeholder="房型，如：主卧、次卧、一居室"
-                        className={inputClasses}
-                        required
-                        value={roomType}
-                        onChange={(e) => setRoomType(e.target.value)}
-                      />
-                    </div>
-                  </>
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-warm-gray">
+                    租赁房型 <span className="text-coral">*</span>
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {LEASE_LAYOUT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setLeaseLayout(opt)}
+                        className={choiceBlock(leaseLayout === opt)}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {postType === "rental" ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-warm-gray/50 pl-1">
+                      周租金（纽币，$50 一档）
+                    </p>
+                    <Select
+                      value={rentBracketId || undefined}
+                      onValueChange={setRentBracketId}
+                    >
+                      <SelectTrigger className={selectTriggerPlain}>
+                        <SelectValue placeholder="选择周租金区间" />
+                      </SelectTrigger>
+                      <SelectContent
+                        position="popper"
+                        className="max-h-[min(320px,70vh)] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]"
+                      >
+                        {NZ_WEEKLY_RENT_BRACKETS.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {formatWeeklyRentBracketLabel(b)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 ) : (
                   <>
                     <div className="space-y-3">
@@ -438,12 +532,7 @@ export default function SubmitForm() {
                           value={budgetBracketLowId || undefined}
                           onValueChange={setBudgetBracketLowId}
                         >
-                          <SelectTrigger
-                            className={cn(
-                              selectTriggerClass,
-                              "pl-4 text-left font-normal"
-                            )}
-                          >
+                          <SelectTrigger className={selectTriggerPlain}>
                             <SelectValue placeholder="周预算（较低档）" />
                           </SelectTrigger>
                           <SelectContent
@@ -461,12 +550,7 @@ export default function SubmitForm() {
                           value={budgetBracketHighId || undefined}
                           onValueChange={setBudgetBracketHighId}
                         >
-                          <SelectTrigger
-                            className={cn(
-                              selectTriggerClass,
-                              "pl-4 text-left font-normal"
-                            )}
-                          >
+                          <SelectTrigger className={selectTriggerPlain}>
                             <SelectValue placeholder="周预算（较高档）" />
                           </SelectTrigger>
                           <SelectContent
@@ -503,7 +587,7 @@ export default function SubmitForm() {
                     placeholder={
                       postType === "rental"
                         ? "描述一下房源情况：楼层、朝向、家具、周边配套等"
-                        : "描述你的需求：房型偏好、生活习惯、对室友的期望等"
+                        : "描述你的需求：生活习惯、对室友的期望等"
                     }
                     rows={4}
                     className={`${inputClasses} py-3 h-auto resize-none`}

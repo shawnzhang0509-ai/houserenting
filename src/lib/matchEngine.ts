@@ -52,18 +52,43 @@ function closedIntervalsOverlap(
   return loA <= hiB && loB <= hiA;
 }
 
-/** 一条出租与一条求租：区域 + 周租金区间有交集 */
+/** 求租方勾选的特殊要求须全部由出租方勾选（求租无勾选则不限制） */
+function specialRequirementsCompatible(
+  rental: string[],
+  seeking: string[]
+): boolean {
+  if (seeking.length === 0) return true;
+  const setR = new Set(rental);
+  return seeking.every((s) => setR.has(s));
+}
+
+/** 一条出租与一条求租：区域 + 周租金 + 租赁房型 + 期限 + 特殊要求 */
 export function rentalAndSeekingMatch(
   rental: RentalPost,
   seeking: SeekingPost
 ): boolean {
   if (!locationsLikelyMatch(rental.location, seeking.location)) return false;
-  return closedIntervalsOverlap(
-    rental.weeklyRentMin,
-    rental.weeklyRentMax,
-    seeking.budgetWeeklyMin,
-    seeking.budgetWeeklyMax
-  );
+  if (rental.leaseLayout !== seeking.leaseLayout) return false;
+  if (rental.leaseTerm !== seeking.leaseTerm) return false;
+  if (
+    !specialRequirementsCompatible(
+      rental.specialRequirements,
+      seeking.specialRequirements
+    )
+  ) {
+    return false;
+  }
+  if (
+    !closedIntervalsOverlap(
+      rental.weeklyRentMin,
+      rental.weeklyRentMax,
+      seeking.budgetWeeklyMin,
+      seeking.budgetWeeklyMax
+    )
+  ) {
+    return false;
+  }
+  return true;
 }
 
 /** 给定刚发布的一条，在其余帖子中找相反类型的匹配 */
@@ -91,7 +116,9 @@ export function formatMatchSummary(
   matches: DemandPost[]
 ): string {
   const lines: string[] = [];
-  lines.push("姐妹找房 · 本机匹配结果（区域 + 周租金区间）");
+  lines.push(
+    "姐妹找房 · 本机匹配结果（区域 + 租赁房型/期限 + 特殊要求 + 周租金区间）"
+  );
   lines.push("");
   lines.push("【刚发布】");
   lines.push(formatOnePost(newPost));
@@ -106,16 +133,23 @@ export function formatMatchSummary(
   return lines.join("\n");
 }
 
+function formatSpecialList(list: string[]): string {
+  if (!list.length) return "（无）";
+  return list.join("、");
+}
+
 function formatOnePost(p: DemandPost): string {
   const base = `类型：${p.type === "rental" ? "有房出租" : "正在找房"}
 称呼：${p.nickname}
 微信：${p.wechat}
 区域：${p.location}
+租赁房型：${p.leaseLayout}
+租赁期限：${p.leaseTerm}
+特殊要求：${formatSpecialList(p.specialRequirements)}
 补充：${p.description || "（无）"}`;
   if (p.type === "rental") {
     return `${base}
-周租（纽币）：$${p.weeklyRentMin} – $${p.weeklyRentMax} / 周
-房型：${p.roomType}`;
+周租（纽币）：$${p.weeklyRentMin} – $${p.weeklyRentMax} / 周`;
   }
   const lo = Math.min(p.budgetWeeklyMin, p.budgetWeeklyMax);
   const hi = Math.max(p.budgetWeeklyMin, p.budgetWeeklyMax);

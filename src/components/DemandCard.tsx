@@ -5,10 +5,11 @@ interface DemandCardProps {
   nickname: string;
   location: string;
   description: string;
-  price?: string; // 招租：周租金展示
-  roomType?: string;
-  budget?: string; // 找租：周预算展示
+  price?: string;
+  budget?: string;
   moveInDate?: string;
+  leaseLayout?: string;
+  leaseTerm?: string;
   color: string;
   onClick?: () => void;
 }
@@ -33,9 +34,10 @@ export default function DemandCard({
   location,
   description,
   price,
-  roomType,
   budget,
   moveInDate,
+  leaseLayout,
+  leaseTerm,
   color,
   onClick,
 }: DemandCardProps) {
@@ -55,7 +57,6 @@ export default function DemandCard({
         (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
       }}
     >
-      {/* Color block */}
       <div
         className={`h-[120px] ${c.bg} flex flex-col items-center justify-center transition-transform duration-300 group-hover:scale-[1.02]`}
       >
@@ -69,9 +70,7 @@ export default function DemandCard({
         </span>
       </div>
 
-      {/* Content */}
       <div className="p-6">
-        {/* Nickname + type badge */}
         <div className="flex items-center justify-between mb-2">
           <span className="text-base font-medium text-warm-gray">{nickname}</span>
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -81,28 +80,30 @@ export default function DemandCard({
           </span>
         </div>
 
-        {/* Location */}
         <div className="flex items-center gap-1 mb-3">
           <MapPin className="w-3.5 h-3.5 text-coral" strokeWidth={1.5} />
           <span className="text-sm text-coral">{location}</span>
         </div>
 
-        {/* Description */}
         <p className="text-sm text-warm-gray/70 leading-relaxed line-clamp-3 mb-4">
           {description}
         </p>
 
-        {/* Tags */}
         <div className="flex flex-wrap gap-2">
+          {leaseLayout && (
+            <span className={`inline-block max-w-full truncate px-3 py-1 rounded-full text-xs font-medium ${tc.bg} ${tc.text}`}>
+              {leaseLayout}
+            </span>
+          )}
+          {leaseTerm && (
+            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${tc.bg} ${tc.text}`}>
+              {leaseTerm}
+            </span>
+          )}
           {isRental && price && (
             <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${tc.bg} ${tc.text}`}>
               <BedDouble className="w-3 h-3" />
               {price}/周
-            </span>
-          )}
-          {isRental && roomType && (
-            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${tc.bg} ${tc.text}`}>
-              {roomType}
             </span>
           )}
           {!isRental && budget && (
