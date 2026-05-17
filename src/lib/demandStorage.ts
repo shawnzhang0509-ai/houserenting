@@ -1,7 +1,10 @@
 import type { DemandPost } from "@/types/demand";
-import { SPECIAL_REQUIREMENT_OPTIONS } from "@/data/leaseFields";
+import {
+  LEASE_LAYOUT_OPTIONS,
+  SPECIAL_REQUIREMENT_OPTIONS,
+} from "@/data/leaseFields";
 
-const STORAGE_KEY = "jiejie-demand-posts-nz-v2";
+const STORAGE_KEY = "jiejie-demand-posts-nz-v3";
 
 function safeParse(raw: string | null): DemandPost[] {
   if (!raw) return [];
@@ -20,6 +23,14 @@ function isSpecialRequirementsList(v: unknown): v is string[] {
   return v.every((x) => typeof x === "string" && allowed.has(x));
 }
 
+const layoutAllowed = new Set<string>([...LEASE_LAYOUT_OPTIONS]);
+
+function isLeaseLayoutsList(v: unknown): v is string[] {
+  if (!Array.isArray(v)) return false;
+  if (v.length === 0) return false;
+  return v.every((x) => typeof x === "string" && layoutAllowed.has(x));
+}
+
 function isDemandPost(v: unknown): v is DemandPost {
   if (!v || typeof v !== "object") return false;
   const o = v as Record<string, unknown>;
@@ -28,15 +39,18 @@ function isDemandPost(v: unknown): v is DemandPost {
   if (typeof o.location !== "string" || typeof o.wechat !== "string") return false;
   if (typeof o.description !== "string") return false;
   if (typeof o.createdAt !== "number") return false;
-  if (typeof o.leaseLayout !== "string" || typeof o.leaseTerm !== "string") return false;
+  if (typeof o.leaseTerm !== "string") return false;
   if (!isSpecialRequirementsList(o.specialRequirements)) return false;
   if (o.type === "rental") {
     return (
+      typeof o.leaseLayout === "string" &&
+      layoutAllowed.has(o.leaseLayout) &&
       typeof o.weeklyRentMin === "number" &&
       typeof o.weeklyRentMax === "number"
     );
   }
   return (
+    isLeaseLayoutsList(o.leaseLayouts) &&
     typeof o.budgetWeeklyMin === "number" &&
     typeof o.budgetWeeklyMax === "number" &&
     typeof o.moveInDate === "string"
