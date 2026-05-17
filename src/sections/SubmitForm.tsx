@@ -31,7 +31,10 @@ import { Button } from "@/components/ui/button";
 import { appendDemandPost } from "@/lib/demandStorage";
 import { findMatchesForPost, formatMatchSummary } from "@/lib/matchEngine";
 import { cn } from "@/lib/utils";
-import { NZ_REGION_OPTIONS } from "@/data/nzRegions";
+import {
+  NZ_REGION_GROUPS,
+  getRegionsInGroup,
+} from "@/data/nzRegions";
 import {
   NZ_WEEKLY_RENT_BRACKETS,
   getWeeklyRentBracketById,
@@ -74,10 +77,14 @@ export default function SubmitForm() {
 
   const [nickname, setNickname] = useState("");
   const [wechat, setWechat] = useState("");
+  const [locationGroupId, setLocationGroupId] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
 
   const [leaseLayout, setLeaseLayout] = useState("");
+  const [leaseLayoutsSelected, setLeaseLayoutsSelected] = useState<Set<string>>(
+    () => new Set()
+  );
   const [leaseTerm, setLeaseTerm] = useState("");
   const [specialSelected, setSpecialSelected] = useState<Set<string>>(
     () => new Set()
@@ -130,12 +137,27 @@ export default function SubmitForm() {
     specialSelected.has(o)
   );
 
+  const orderedLeaseLayouts = LEASE_LAYOUT_OPTIONS.filter((o) =>
+    leaseLayoutsSelected.has(o)
+  );
+
+  const toggleLeaseLayout = (key: string) => {
+    setLeaseLayoutsSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   const resetFields = () => {
     setNickname("");
     setWechat("");
+    setLocationGroupId("");
     setLocation("");
     setDescription("");
     setLeaseLayout("");
+    setLeaseLayoutsSelected(new Set());
     setLeaseTerm("");
     setSpecialSelected(new Set());
     setRentBracketId("");
@@ -147,12 +169,21 @@ export default function SubmitForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!location.trim()) {
-      toast.error("请选择房屋区域");
+    if (!locationGroupId) {
+      toast.error("请先选择大区");
       return;
     }
-    if (!leaseLayout) {
-      toast.error("请选择租赁房型");
+    if (!location.trim()) {
+      toast.error("请选择具体区域");
+      return;
+    }
+    if (postType === "rental") {
+      if (!leaseLayout) {
+        toast.error("请选择租赁房型（单选）");
+        return;
+      }
+    } else if (leaseLayoutsSelected.size === 0) {
+      toast.error("请至少选择一种可接受的租赁房型");
       return;
     }
     if (!leaseTerm) {
@@ -190,7 +221,6 @@ export default function SubmitForm() {
       location: location.trim(),
       wechat: wechat.trim(),
       description: description.trim(),
-      leaseLayout,
       leaseTerm,
       specialRequirements: orderedSpecials,
     };
@@ -202,6 +232,7 @@ export default function SubmitForm() {
       newPost = {
         ...base,
         type: "rental",
+        leaseLayout,
         weeklyRentMin: br.min,
         weeklyRentMax: br.max,
       };
@@ -213,6 +244,7 @@ export default function SubmitForm() {
       newPost = {
         ...base,
         type: "seeking",
+        leaseLayouts: orderedLeaseLayouts,
         budgetWeeklyMin: merged.min,
         budgetWeeklyMax: merged.max,
         moveInDate: moveInDate,
@@ -284,7 +316,7 @@ export default function SubmitForm() {
               匹配成功
             </DialogTitle>
             <DialogDescription className="text-warm-gray/70 text-left">
-              本机判断：区域相同，租赁房型与期限一致，周租金与周预算区间有重叠，且求租方勾选的特殊要求出租方均已勾选。下方可复制双方微信等信息。
+              本机判断：区域相同，出租房型在求租方可接受列表内，租期一致，周租金与周预算有重叠，且求租勾选的特殊要求出租方均已勾选。下方可复制双方微信等信息。
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[40vh] overflow-y-auto rounded-xl border border-gray-200 bg-white/80 p-4 text-sm text-warm-gray/90 whitespace-pre-wrap font-mono leading-relaxed">
@@ -327,7 +359,7 @@ export default function SubmitForm() {
               {postType === "rental"
                 ? "有房要出租？填写房源信息，我们帮你找到正在找房的女孩子。"
                 : "正在找房住？发布你的需求，匹配到有房出租的姐妹。"}
-              区域、房型、期限与纽币周租金均为选项；特殊要求可多选。求租方勾选的特殊项须出租方也勾选才会匹配。
+              区域分两级选择；招租房型单选，求租可多选房型。租期、纽币周租与特殊要求为选项；求租勾选的特殊项须出租方也勾选才会匹配。
             </p>
 
             <div className="hidden lg:block">
@@ -350,7 +382,10 @@ export default function SubmitForm() {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setPostType("rental")}
+                    onClick={() => {
+                      setPostType("rental");
+                      setLeaseLayoutsSelected(new Set());
+                    }}
                     className={`flex items-center justify-center gap-2 h-12 rounded-xl text-sm font-medium transition-all duration-200 ${
                       postType === "rental"
                         ? "bg-coral text-white shadow-sm"
@@ -362,7 +397,10 @@ export default function SubmitForm() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setPostType("seeking")}
+                    onClick={() => {
+                      setPostType("seeking");
+                      setLeaseLayout("");
+                    }}
                     className={`flex items-center justify-center gap-2 h-12 rounded-xl text-sm font-medium transition-all duration-200 ${
                       postType === "seeking"
                         ? "bg-soft-purple text-white shadow-sm"
@@ -405,23 +443,56 @@ export default function SubmitForm() {
                   />
                 </div>
 
-                <div className="relative">
-                  <MapPin
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray/40 z-10 pointer-events-none"
-                    strokeWidth={1.5}
-                  />
+                <div className="space-y-3">
+                  <div className="relative">
+                    <MapPin
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray/40 z-10 pointer-events-none"
+                      strokeWidth={1.5}
+                    />
+                    <Select
+                      value={locationGroupId || undefined}
+                      onValueChange={(id) => {
+                        setLocationGroupId(id);
+                        setLocation("");
+                      }}
+                    >
+                      <SelectTrigger className={selectTriggerClass}>
+                        <SelectValue placeholder="① 选择大区" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {NZ_REGION_GROUPS.map((g) => (
+                          <SelectItem key={g.id} value={g.id}>
+                            {g.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <Select
+                    key={locationGroupId || "none"}
                     value={location || undefined}
                     onValueChange={setLocation}
+                    disabled={!locationGroupId}
                   >
-                    <SelectTrigger className={selectTriggerClass}>
-                      <SelectValue placeholder="选择房屋区域" />
+                    <SelectTrigger
+                      className={cn(
+                        selectTriggerPlain,
+                        !locationGroupId && "opacity-50 pointer-events-none"
+                      )}
+                    >
+                      <SelectValue
+                        placeholder={
+                          locationGroupId
+                            ? "② 选择具体区域"
+                            : "请先选择大区"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent
                       position="popper"
-                      className="max-h-[min(320px,70vh)] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]"
+                      className="max-h-[min(280px,55vh)] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]"
                     >
-                      {NZ_REGION_OPTIONS.map((region) => (
+                      {getRegionsInGroup(locationGroupId).map((region) => (
                         <SelectItem key={region} value={region}>
                           {region}
                         </SelectItem>
@@ -479,22 +550,51 @@ export default function SubmitForm() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="rounded-2xl border border-soft-purple/25 bg-[#FAF7FF] p-4 space-y-3">
                   <p className="text-sm font-semibold text-warm-gray">
                     租赁房型 <span className="text-coral">*</span>
+                    <span className="block text-xs font-normal text-warm-gray/55 mt-1">
+                      {postType === "rental"
+                        ? "招租：请选一种实际出租类型"
+                        : "求租：可接受多种类型，多选"}
+                    </span>
                   </p>
-                  <div className="flex flex-col gap-2">
-                    {LEASE_LAYOUT_OPTIONS.map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => setLeaseLayout(opt)}
-                        className={choiceBlock(leaseLayout === opt)}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
+                  {postType === "rental" ? (
+                    <div className="flex flex-col gap-2">
+                      {LEASE_LAYOUT_OPTIONS.map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setLeaseLayout(opt)}
+                          className={choiceBlock(leaseLayout === opt)}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {LEASE_LAYOUT_OPTIONS.map((opt) => {
+                        const on = leaseLayoutsSelected.has(opt);
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => toggleLeaseLayout(opt)}
+                            className={cn(
+                              "rounded-full border px-3.5 py-2.5 text-sm font-medium transition-all duration-200 min-h-[44px] max-w-full text-left leading-snug",
+                              on
+                                ? "border-soft-purple bg-soft-purple text-white shadow-sm"
+                                : "border-gray-200 bg-white text-warm-gray hover:border-soft-purple/45"
+                            )}
+                            aria-pressed={on}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {postType === "rental" ? (

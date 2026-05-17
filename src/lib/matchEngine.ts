@@ -62,13 +62,20 @@ function specialRequirementsCompatible(
   return seeking.every((s) => setR.has(s));
 }
 
-/** 一条出租与一条求租：区域 + 周租金 + 租赁房型 + 期限 + 特殊要求 */
+/** 出租单一房型须落在求租方可接受的房型列表中 */
+function leaseLayoutCompatible(rentalLayout: string, seekingLayouts: string[]) {
+  return seekingLayouts.includes(rentalLayout);
+}
+
+/** 一条出租与一条求租：区域 + 房型 + 期限 + 特殊要求 + 周租金 */
 export function rentalAndSeekingMatch(
   rental: RentalPost,
   seeking: SeekingPost
 ): boolean {
   if (!locationsLikelyMatch(rental.location, seeking.location)) return false;
-  if (rental.leaseLayout !== seeking.leaseLayout) return false;
+  if (!leaseLayoutCompatible(rental.leaseLayout, seeking.leaseLayouts)) {
+    return false;
+  }
   if (rental.leaseTerm !== seeking.leaseTerm) return false;
   if (
     !specialRequirementsCompatible(
@@ -117,7 +124,7 @@ export function formatMatchSummary(
 ): string {
   const lines: string[] = [];
   lines.push(
-    "姐妹找房 · 本机匹配结果（区域 + 租赁房型/期限 + 特殊要求 + 周租金区间）"
+    "姐妹找房 · 本机匹配结果（区域 + 出租房型∈求租选项 + 期限 + 特殊要求 + 周租金）"
   );
   lines.push("");
   lines.push("【刚发布】");
@@ -138,12 +145,17 @@ function formatSpecialList(list: string[]): string {
   return list.join("、");
 }
 
+function formatLeaseLine(p: DemandPost): string {
+  if (p.type === "rental") return `租赁房型：${p.leaseLayout}`;
+  return `租赁房型（求租可多选）：${formatSpecialList(p.leaseLayouts)}`;
+}
+
 function formatOnePost(p: DemandPost): string {
   const base = `类型：${p.type === "rental" ? "有房出租" : "正在找房"}
 称呼：${p.nickname}
 微信：${p.wechat}
 区域：${p.location}
-租赁房型：${p.leaseLayout}
+${formatLeaseLine(p)}
 租赁期限：${p.leaseTerm}
 特殊要求：${formatSpecialList(p.specialRequirements)}
 补充：${p.description || "（无）"}`;

@@ -9,6 +9,8 @@ interface DemandCardProps {
   budget?: string;
   moveInDate?: string;
   leaseLayout?: string;
+  /** 求租：可展示多种可接受房型 */
+  leaseLayouts?: string[];
   leaseTerm?: string;
   color: string;
   onClick?: () => void;
@@ -37,6 +39,7 @@ export default function DemandCard({
   budget,
   moveInDate,
   leaseLayout,
+  leaseLayouts,
   leaseTerm,
   color,
   onClick,
@@ -44,6 +47,12 @@ export default function DemandCard({
   const c = colorMap[color] || colorMap.coral;
   const tc = tagColorMap[color] || tagColorMap.coral;
   const isRental = type === "rental";
+  const layoutTags =
+    leaseLayouts && leaseLayouts.length > 0
+      ? leaseLayouts
+      : leaseLayout
+        ? [leaseLayout]
+        : [];
 
   return (
     <div
@@ -90,11 +99,14 @@ export default function DemandCard({
         </p>
 
         <div className="flex flex-wrap gap-2">
-          {leaseLayout && (
-            <span className={`inline-block max-w-full truncate px-3 py-1 rounded-full text-xs font-medium ${tc.bg} ${tc.text}`}>
-              {leaseLayout}
+          {layoutTags.map((tag) => (
+            <span
+              key={tag}
+              className={`inline-block max-w-full truncate px-3 py-1 rounded-full text-xs font-medium ${tc.bg} ${tc.text}`}
+            >
+              {tag}
             </span>
-          )}
+          ))}
           {leaseTerm && (
             <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${tc.bg} ${tc.text}`}>
               {leaseTerm}
