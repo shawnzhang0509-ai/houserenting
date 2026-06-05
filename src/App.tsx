@@ -1,4 +1,5 @@
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
+import { useAdminMode } from "@/hooks/useAdminMode";
 import { useLenis } from "@/hooks/useLenis";
 import Navbar from "@/sections/Navbar";
 import HeroSection from "@/sections/HeroSection";
@@ -9,6 +10,15 @@ import SubmitForm from "@/sections/SubmitForm";
 
 function App() {
   useLenis();
+  const { registerAdminKnock } = useAdminMode();
+
+  const handleFooterKnock = () => {
+    if (registerAdminKnock()) {
+      toast.success("已开启管理员模式", {
+        description: "需求广场上可删除本机用户发布（示例卡片不可删）",
+      });
+    }
+  };
 
   return (
     <div className="relative">
@@ -25,9 +35,13 @@ function App() {
       {/* Footer */}
       <footer className="bg-cream py-8 border-t border-coral/10">
         <div className="max-w-7xl mx-auto px-6 lg:px-12 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-warm-gray/50">
+          <button
+            type="button"
+            onClick={handleFooterKnock}
+            className="text-sm text-warm-gray/50 hover:text-warm-gray/70 transition-colors"
+          >
             &copy; 2025 姐妹找房. 女生租房招租信息匹配
-          </p>
+          </button>
           <p className="text-sm text-warm-gray/50">
             安全 · 私密 · 省心
           </p>

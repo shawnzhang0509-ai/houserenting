@@ -3,7 +3,13 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import DemandCard from "@/components/DemandCard";
 import { DEMAND_POSTS_UPDATED } from "@/lib/demandEvents";
-import { DEMAND_STORAGE_KEY, loadDemandPosts } from "@/lib/demandStorage";
+import { useAdminMode } from "@/hooks/useAdminMode";
+import {
+  DEMAND_STORAGE_KEY,
+  loadDemandPosts,
+  removeDemandPost,
+} from "@/lib/demandStorage";
+import { toast } from "sonner";
 import {
   demandPostToGalleryListing,
   type GalleryListing,
@@ -101,6 +107,7 @@ export default function DemandGallery() {
   const gridRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState<FilterType>("all");
   const [userListings, setUserListings] = useState<GalleryListing[]>([]);
+  const { adminMode, disableAdmin } = useAdminMode();
 
   const refreshListings = useCallback(() => {
     setUserListings(readUserListings());
@@ -162,6 +169,19 @@ export default function DemandGallery() {
     }
   };
 
+  const handleDeleteListing = (listing: GalleryListing) => {
+    if (listing.source !== "user") return;
+    const ok = window.confirm(
+      `确定删除「${listing.nickname}」这条发布？\n（仅删除本浏览器里的记录）`
+    );
+    if (!ok) return;
+    if (removeDemandPost(listing.id)) {
+      toast.success("已删除");
+    } else {
+      toast.error("删除失败");
+    }
+  };
+
   const filterButtons: { key: FilterType; label: string }[] = [
     { key: "all", label: "全部" },
     { key: "rental", label: "有房出租" },
@@ -181,6 +201,19 @@ export default function DemandGallery() {
               : "有人有房要出租，有人在找房子住 —— 发布后会显示在本页面最上方"}
           </p>
         </div>
+
+        {adminMode ? (
+          <div className="mb-6 mx-auto max-w-lg flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 rounded-xl border border-coral/25 bg-coral/8 px-4 py-3 text-sm text-warm-gray">
+            <span>管理员模式：可删除带「我发布的」的本机记录</span>
+            <button
+              type="button"
+              onClick={disableAdmin}
+              className="shrink-0 rounded-full border border-warm-gray/25 px-3 py-1 text-xs hover:bg-white"
+            >
+              退出
+            </button>
+          </div>
+        ) : null}
 
         <div className="flex justify-center gap-3 mb-10">
           {filterButtons.map((btn) => (
@@ -218,6 +251,8 @@ export default function DemandGallery() {
                 photos={listing.photos}
                 color={listing.color}
                 badge={listing.source === "user" ? "我发布的" : undefined}
+                showDelete={adminMode && listing.source === "user"}
+                onDelete={() => handleDeleteListing(listing)}
                 onClick={handleCardClick}
               />
             </div>

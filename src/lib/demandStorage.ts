@@ -79,3 +79,13 @@ export function appendDemandPost(post: DemandPost): DemandPost[] {
   notifyDemandPostsUpdated();
   return next;
 }
+
+/** 按 id 删除一条本机发布（管理员模式用） */
+export function removeDemandPost(id: string): boolean {
+  const prev = loadDemandPosts();
+  const next = prev.filter((p) => p.id !== id);
+  if (next.length === prev.length) return false;
+  saveDemandPosts(next);
+  notifyDemandPostsUpdated();
+  return true;
+}
