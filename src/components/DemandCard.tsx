@@ -1,4 +1,4 @@
-import { Home, MapPin, User, BedDouble } from "lucide-react";
+import { Home, MapPin, User, BedDouble, Trash2 } from "lucide-react";
 
 interface DemandCardProps {
   type: "rental" | "seeking";
@@ -16,6 +16,8 @@ interface DemandCardProps {
   photos?: string[];
   color: string;
   onClick?: () => void;
+  showDelete?: boolean;
+  onDelete?: () => void;
 }
 
 const colorMap: Record<string, { bg: string; text: string }> = {
@@ -47,6 +49,8 @@ export default function DemandCard({
   photos,
   color,
   onClick,
+  showDelete,
+  onDelete,
 }: DemandCardProps) {
   const c = colorMap[color] || colorMap.coral;
   const tc = tagColorMap[color] || tagColorMap.coral;
@@ -61,7 +65,7 @@ export default function DemandCard({
 
   return (
     <div
-      className="break-inside-avoid mb-6 rounded-2xl bg-cream overflow-hidden cursor-pointer group transition-transform duration-300"
+      className="relative break-inside-avoid mb-6 rounded-2xl bg-cream overflow-hidden cursor-pointer group transition-transform duration-300"
       style={{ transitionTimingFunction: "cubic-bezier(0.215, 0.61, 0.355, 1)" }}
       onClick={onClick}
       onMouseEnter={(e) => {
@@ -71,6 +75,19 @@ export default function DemandCard({
         (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
       }}
     >
+      {showDelete && onDelete ? (
+        <button
+          type="button"
+          title="删除这条发布"
+          className="absolute top-2 right-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-coral shadow-md border border-coral/20 hover:bg-coral hover:text-white transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+        >
+          <Trash2 className="h-4 w-4" strokeWidth={2} />
+        </button>
+      ) : null}
       {coverPhoto ? (
         <div className="relative h-[160px] overflow-hidden transition-transform duration-300 group-hover:scale-[1.02]">
           <img
