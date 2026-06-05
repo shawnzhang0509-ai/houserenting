@@ -9,6 +9,11 @@ import {
   loadDemandPosts,
   removeDemandPost,
 } from "@/lib/demandStorage";
+import {
+  getHiddenSampleIds,
+  hideSampleListing,
+  HIDDEN_SAMPLES_KEY,
+} from "@/lib/hiddenSamples";
 import { toast } from "sonner";
 import {
   demandPostToGalleryListing,
@@ -107,17 +112,27 @@ export default function DemandGallery() {
   const gridRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState<FilterType>("all");
   const [userListings, setUserListings] = useState<GalleryListing[]>([]);
+  const [hiddenSampleIds, setHiddenSampleIds] = useState<Set<string>>(
+    () => new Set()
+  );
   const { adminMode, disableAdmin } = useAdminMode();
 
   const refreshListings = useCallback(() => {
     setUserListings(readUserListings());
+    setHiddenSampleIds(getHiddenSampleIds());
   }, []);
 
   useEffect(() => {
     refreshListings();
 
     const onStorage = (e: StorageEvent) => {
-      if (e.key === DEMAND_STORAGE_KEY || e.key === null) refreshListings();
+      if (
+        e.key === DEMAND_STORAGE_KEY ||
+        e.key === HIDDEN_SAMPLES_KEY ||
+        e.key === null
+      ) {
+        refreshListings();
+      }
     };
 
     window.addEventListener(DEMAND_POSTS_UPDATED, refreshListings);
@@ -128,7 +143,10 @@ export default function DemandGallery() {
     };
   }, [refreshListings]);
 
-  const allListings = [...userListings, ...SAMPLE_LISTINGS];
+  const visibleSamples = SAMPLE_LISTINGS.filter(
+    (s) => !hiddenSampleIds.has(s.id)
+  );
+  const allListings = [...userListings, ...visibleSamples];
 
   const filteredListings =
     filter === "all"
@@ -170,16 +188,25 @@ export default function DemandGallery() {
   };
 
   const handleDeleteListing = (listing: GalleryListing) => {
-    if (listing.source !== "user") return;
-    const ok = window.confirm(
-      `确定删除「${listing.nickname}」这条发布？\n（仅删除本浏览器里的记录）`
-    );
+    const hint =
+      listing.source === "sample"
+        ? "示例卡片将在本浏览器隐藏"
+        : "本机用户发布记录将被移除";
+    const ok = window.confirm(`确定删除「${listing.nickname}」？\n（${hint}）`);
     if (!ok) return;
-    if (removeDemandPost(listing.id)) {
-      toast.success("已删除");
-    } else {
-      toast.error("删除失败");
+
+    if (listing.source === "user") {
+      if (removeDemandPost(listing.id)) {
+        toast.success("已删除");
+      } else {
+        toast.error("删除失败");
+      }
+      return;
     }
+
+    hideSampleListing(listing.id);
+    setHiddenSampleIds(getHiddenSampleIds());
+    toast.success("已隐藏示例卡片");
   };
 
   const filterButtons: { key: FilterType; label: string }[] = [
@@ -204,7 +231,7 @@ export default function DemandGallery() {
 
         {adminMode ? (
           <div className="mb-6 mx-auto max-w-lg flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 rounded-xl border border-coral/25 bg-coral/8 px-4 py-3 text-sm text-warm-gray">
-            <span>管理员模式：可删除带「我发布的」的本机记录</span>
+            <span>管理员模式：可删除广场上全部卡片（含示例）</span>
             <button
               type="button"
               onClick={disableAdmin}
@@ -251,7 +278,7 @@ export default function DemandGallery() {
                 photos={listing.photos}
                 color={listing.color}
                 badge={listing.source === "user" ? "我发布的" : undefined}
-                showDelete={adminMode && listing.source === "user"}
+                showDelete={adminMode}
                 onDelete={() => handleDeleteListing(listing)}
                 onClick={handleCardClick}
               />

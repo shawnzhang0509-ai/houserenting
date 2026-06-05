@@ -15,7 +15,7 @@ function App() {
   const handleFooterKnock = () => {
     if (registerAdminKnock()) {
       toast.success("已开启管理员模式", {
-        description: "需求广场上可删除本机用户发布（示例卡片不可删）",
+        description: "需求广场上可删除全部卡片（含示例与本机发布）",
       });
     }
   };
