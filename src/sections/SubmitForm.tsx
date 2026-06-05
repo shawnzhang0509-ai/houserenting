@@ -259,11 +259,25 @@ export default function SubmitForm() {
       setLastNewPost(newPost);
       setLastMatches(matches);
       setMatchDialogOpen(true);
-      toast.success("本机判断：有匹配");
-    } else {
-      toast.success("已记在本浏览器里", {
-        description: "仅本页面、本设备内会与之后提交的记录做匹配。",
+      toast.success("已发布到需求广场，并发现本机匹配", {
+        description: "你的信息在最上方，带「我发布的」标签。",
       });
+    } else {
+      toast.success("已发布到需求广场", {
+        description: "在你本浏览器的「姐妹们的信息」最上方可见。",
+        action: {
+          label: "去看看",
+          onClick: () =>
+            document
+              .getElementById("gallery")
+              ?.scrollIntoView({ behavior: "smooth" }),
+        },
+      });
+      window.setTimeout(() => {
+        document
+          .getElementById("gallery")
+          ?.scrollIntoView({ behavior: "smooth" });
+      }, 500);
     }
 
     resetFields();

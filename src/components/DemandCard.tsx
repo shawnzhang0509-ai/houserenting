@@ -12,6 +12,7 @@ interface DemandCardProps {
   /** 求租：可展示多种可接受房型 */
   leaseLayouts?: string[];
   leaseTerm?: string;
+  badge?: string;
   color: string;
   onClick?: () => void;
 }
@@ -41,6 +42,7 @@ export default function DemandCard({
   leaseLayout,
   leaseLayouts,
   leaseTerm,
+  badge,
   color,
   onClick,
 }: DemandCardProps) {
@@ -80,13 +82,26 @@ export default function DemandCard({
       </div>
 
       <div className="p-6">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-base font-medium text-warm-gray">{nickname}</span>
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-            isRental ? "bg-coral/10 text-coral" : "bg-soft-purple/15 text-soft-purple"
-          }`}>
-            {isRental ? "招租" : "找租"}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-base font-medium text-warm-gray truncate">
+            {nickname}
           </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {badge ? (
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-coral text-white">
+                {badge}
+              </span>
+            ) : null}
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                isRental
+                  ? "bg-coral/10 text-coral"
+                  : "bg-soft-purple/15 text-soft-purple"
+              }`}
+            >
+              {isRental ? "招租" : "找租"}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-1 mb-3">
