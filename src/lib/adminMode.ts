@@ -1,4 +1,4 @@
-/** 轻量「管理员模式」：无账号体系，仅本机会话内可删本机发布记录 */
+/** 轻量「管理员模式」：无账号体系，?admin=口令 后可删广场全部卡片 */
 
 export const ADMIN_SESSION_KEY = "jiejie-admin-session";
 export const ADMIN_MODE_CHANGED = "jiejie-admin-changed";
