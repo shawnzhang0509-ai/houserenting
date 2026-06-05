@@ -15,6 +15,7 @@ export const NZ_REGION_GROUPS: readonly NzRegionGroup[] = [
     regions: [
       "奥克兰北岸 Auckland North Shore",
       "奥克兰中区 Auckland Central",
+      "奥克兰CBD Auckland CBD",
       "奥克兰东区 Auckland East",
       "奥克兰南区 Auckland South",
       "奥克兰西区 Auckland West",

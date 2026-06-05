@@ -19,6 +19,8 @@ export type RentalPost = DemandPostBase & {
   leaseLayout: string;
   weeklyRentMin: number;
   weeklyRentMax: number;
+  /** 可选房源照片（JPEG data URL，仅存本机） */
+  photos?: string[];
 };
 
 /** 求租：可接受多种租赁房型 */

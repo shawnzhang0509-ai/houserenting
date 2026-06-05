@@ -8,6 +8,8 @@ import {
   Home,
   Search,
   MessageCircle,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -45,6 +47,10 @@ import {
   LEASE_TERM_OPTIONS,
   SPECIAL_REQUIREMENT_OPTIONS,
 } from "@/data/leaseFields";
+import {
+  fileToCompressedDataUrl,
+  MAX_RENTAL_PHOTOS,
+} from "@/lib/rentalPhotos";
 import type { DemandPost, PostType } from "@/types/demand";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -74,6 +80,7 @@ export default function SubmitForm() {
   const [status, setStatus] = useState<FormStatus>("idle");
   const [postType, setPostType] = useState<PostType>("rental");
   const formRef = useRef<HTMLDivElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [nickname, setNickname] = useState("");
   const [wechat, setWechat] = useState("");
@@ -95,6 +102,8 @@ export default function SubmitForm() {
   const [budgetBracketLowId, setBudgetBracketLowId] = useState("");
   const [budgetBracketHighId, setBudgetBracketHighId] = useState("");
   const [moveInDate, setMoveInDate] = useState("");
+  const [rentalPhotos, setRentalPhotos] = useState<string[]>([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
 
   const [matchDialogOpen, setMatchDialogOpen] = useState(false);
   const [lastMatches, setLastMatches] = useState<DemandPost[]>([]);
@@ -164,6 +173,33 @@ export default function SubmitForm() {
     setBudgetBracketLowId("");
     setBudgetBracketHighId("");
     setMoveInDate("");
+    setRentalPhotos([]);
+  };
+
+  const handlePhotoFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const slots = MAX_RENTAL_PHOTOS - rentalPhotos.length;
+    if (slots <= 0) {
+      toast.error(`最多上传 ${MAX_RENTAL_PHOTOS} 张照片`);
+      return;
+    }
+    setPhotoBusy(true);
+    const picked = Array.from(files).slice(0, slots);
+    try {
+      const compressed = await Promise.all(
+        picked.map((f) => fileToCompressedDataUrl(f))
+      );
+      setRentalPhotos((prev) => [...prev, ...compressed].slice(0, MAX_RENTAL_PHOTOS));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "图片处理失败");
+    } finally {
+      setPhotoBusy(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  };
+
+  const removeRentalPhoto = (index: number) => {
+    setRentalPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -235,6 +271,7 @@ export default function SubmitForm() {
         leaseLayout,
         weeklyRentMin: br.min,
         weeklyRentMax: br.max,
+        ...(rentalPhotos.length > 0 ? { photos: rentalPhotos } : {}),
       };
     } else {
       const merged = mergeSeekingBudgetBrackets(
@@ -414,6 +451,7 @@ export default function SubmitForm() {
                     onClick={() => {
                       setPostType("seeking");
                       setLeaseLayout("");
+                      setRentalPhotos([]);
                     }}
                     className={`flex items-center justify-center gap-2 h-12 rounded-xl text-sm font-medium transition-all duration-200 ${
                       postType === "seeking"
@@ -710,6 +748,60 @@ export default function SubmitForm() {
                     onChange={(e) => setDescription(e.target.value)}
                   />
                 </div>
+
+                {postType === "rental" ? (
+                  <div className="space-y-3 rounded-2xl border border-gray-100 bg-cream/40 p-4">
+                    <p className="text-sm font-semibold text-warm-gray">
+                      房源照片{" "}
+                      <span className="text-warm-gray/50 font-normal text-xs">
+                        （选填，最多 {MAX_RENTAL_PHOTOS} 张，仅存本浏览器）
+                      </span>
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      {rentalPhotos.map((src, index) => (
+                        <div
+                          key={`${index}-${src.slice(0, 24)}`}
+                          className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-gray-200"
+                        >
+                          <img
+                            src={src}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeRentalPhoto(index)}
+                            className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white"
+                            aria-label="删除照片"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                      {rentalPhotos.length < MAX_RENTAL_PHOTOS ? (
+                        <>
+                          <input
+                            ref={photoInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => void handlePhotoFiles(e.target.files)}
+                          />
+                          <button
+                            type="button"
+                            disabled={photoBusy}
+                            onClick={() => photoInputRef.current?.click()}
+                            className="flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-coral/40 bg-white text-coral text-xs font-medium hover:bg-coral/5 disabled:opacity-60"
+                          >
+                            <ImagePlus className="h-5 w-5" />
+                            {photoBusy ? "处理中" : "添加"}
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
 
                 <button
                   type="submit"
