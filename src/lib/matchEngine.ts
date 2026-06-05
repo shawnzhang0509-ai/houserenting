@@ -160,8 +160,12 @@ ${formatLeaseLine(p)}
 特殊要求：${formatSpecialList(p.specialRequirements)}
 补充：${p.description || "（无）"}`;
   if (p.type === "rental") {
+    const photoLine =
+      p.photos && p.photos.length > 0
+        ? `\n房源照片：${p.photos.length} 张（见需求广场卡片）`
+        : "";
     return `${base}
-周租（纽币）：$${p.weeklyRentMin} – $${p.weeklyRentMax} / 周`;
+周租（纽币）：$${p.weeklyRentMin} – $${p.weeklyRentMax} / 周${photoLine}`;
   }
   const lo = Math.min(p.budgetWeeklyMin, p.budgetWeeklyMax);
   const hi = Math.max(p.budgetWeeklyMin, p.budgetWeeklyMax);

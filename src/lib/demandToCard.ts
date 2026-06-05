@@ -15,6 +15,7 @@ export type GalleryListing = {
   leaseLayout?: string;
   leaseLayouts?: string[];
   leaseTerm?: string;
+  photos?: string[];
   color: string;
 };
 
@@ -45,6 +46,7 @@ export function demandPostToGalleryListing(
       price: `NZD $${post.weeklyRentMin}–${post.weeklyRentMax}`,
       leaseLayout: post.leaseLayout,
       leaseTerm: post.leaseTerm,
+      photos: post.photos?.length ? post.photos : undefined,
       color,
     };
   }

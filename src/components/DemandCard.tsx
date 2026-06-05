@@ -13,6 +13,7 @@ interface DemandCardProps {
   leaseLayouts?: string[];
   leaseTerm?: string;
   badge?: string;
+  photos?: string[];
   color: string;
   onClick?: () => void;
 }
@@ -43,12 +44,14 @@ export default function DemandCard({
   leaseLayouts,
   leaseTerm,
   badge,
+  photos,
   color,
   onClick,
 }: DemandCardProps) {
   const c = colorMap[color] || colorMap.coral;
   const tc = tagColorMap[color] || tagColorMap.coral;
   const isRental = type === "rental";
+  const coverPhoto = photos?.[0];
   const layoutTags =
     leaseLayouts && leaseLayouts.length > 0
       ? leaseLayouts
@@ -68,18 +71,33 @@ export default function DemandCard({
         (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
       }}
     >
-      <div
-        className={`h-[120px] ${c.bg} flex flex-col items-center justify-center transition-transform duration-300 group-hover:scale-[1.02]`}
-      >
-        {isRental ? (
-          <Home className={`w-8 h-8 ${c.text}`} strokeWidth={1.5} />
-        ) : (
-          <User className={`w-8 h-8 ${c.text}`} strokeWidth={1.5} />
-        )}
-        <span className={`text-xs font-medium mt-2 ${c.text} opacity-90`}>
-          {isRental ? "有房出租" : "求租房源"}
-        </span>
-      </div>
+      {coverPhoto ? (
+        <div className="relative h-[160px] overflow-hidden transition-transform duration-300 group-hover:scale-[1.02]">
+          <img
+            src={coverPhoto}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+          <span className="absolute bottom-3 left-3 text-xs font-medium text-white px-2 py-0.5 rounded-full bg-black/35">
+            {isRental ? "有房出租" : "求租房源"}
+            {photos && photos.length > 1 ? ` · ${photos.length} 张` : ""}
+          </span>
+        </div>
+      ) : (
+        <div
+          className={`h-[120px] ${c.bg} flex flex-col items-center justify-center transition-transform duration-300 group-hover:scale-[1.02]`}
+        >
+          {isRental ? (
+            <Home className={`w-8 h-8 ${c.text}`} strokeWidth={1.5} />
+          ) : (
+            <User className={`w-8 h-8 ${c.text}`} strokeWidth={1.5} />
+          )}
+          <span className={`text-xs font-medium mt-2 ${c.text} opacity-90`}>
+            {isRental ? "有房出租" : "求租房源"}
+          </span>
+        </div>
+      )}
 
       <div className="p-6">
         <div className="flex items-center justify-between gap-2 mb-2">

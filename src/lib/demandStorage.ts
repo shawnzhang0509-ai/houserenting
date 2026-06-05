@@ -4,6 +4,7 @@ import {
   SPECIAL_REQUIREMENT_OPTIONS,
 } from "@/data/leaseFields";
 import { notifyDemandPostsUpdated } from "@/lib/demandEvents";
+import { isRentalPhotosList } from "@/lib/rentalPhotos";
 
 export const DEMAND_STORAGE_KEY = "jiejie-demand-posts-nz-v3";
 
@@ -49,7 +50,8 @@ function isDemandPost(v: unknown): v is DemandPost {
       typeof o.leaseLayout === "string" &&
       layoutAllowed.has(o.leaseLayout) &&
       typeof o.weeklyRentMin === "number" &&
-      typeof o.weeklyRentMax === "number"
+      typeof o.weeklyRentMax === "number" &&
+      isRentalPhotosList(o.photos)
     );
   }
   return (

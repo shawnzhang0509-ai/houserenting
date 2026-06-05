@@ -215,6 +215,7 @@ export default function DemandGallery() {
                 leaseLayout={listing.leaseLayout}
                 leaseLayouts={listing.leaseLayouts}
                 leaseTerm={listing.leaseTerm}
+                photos={listing.photos}
                 color={listing.color}
                 badge={listing.source === "user" ? "我发布的" : undefined}
                 onClick={handleCardClick}
