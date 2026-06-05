@@ -3,8 +3,11 @@ import {
   LEASE_LAYOUT_OPTIONS,
   SPECIAL_REQUIREMENT_OPTIONS,
 } from "@/data/leaseFields";
+import { notifyDemandPostsUpdated } from "@/lib/demandEvents";
 
-const STORAGE_KEY = "jiejie-demand-posts-nz-v3";
+export const DEMAND_STORAGE_KEY = "jiejie-demand-posts-nz-v3";
+
+const STORAGE_KEY = DEMAND_STORAGE_KEY;
 
 function safeParse(raw: string | null): DemandPost[] {
   if (!raw) return [];
@@ -71,5 +74,6 @@ export function appendDemandPost(post: DemandPost): DemandPost[] {
   const prev = loadDemandPosts();
   const next = [...prev, post];
   saveDemandPosts(next);
+  notifyDemandPostsUpdated();
   return next;
 }

@@ -1,15 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import DemandCard from "@/components/DemandCard";
+import { DEMAND_POSTS_UPDATED } from "@/lib/demandEvents";
+import { DEMAND_STORAGE_KEY, loadDemandPosts } from "@/lib/demandStorage";
+import {
+  demandPostToGalleryListing,
+  type GalleryListing,
+} from "@/lib/demandToCard";
 
 gsap.registerPlugin(ScrollTrigger);
 
 type FilterType = "all" | "rental" | "seeking";
 
-const mockListings = [
+const SAMPLE_LISTINGS: GalleryListing[] = [
   {
-    type: "rental" as const,
+    id: "sample-sophie",
+    source: "sample",
+    type: "rental",
     nickname: "Sophie",
     location: "奥克兰中区 Auckland Central",
     description: "两居室主卧，近大学，阳光充足，家具齐全。",
@@ -19,7 +27,9 @@ const mockListings = [
     color: "coral",
   },
   {
-    type: "seeking" as const,
+    id: "sample-lily",
+    source: "sample",
+    type: "seeking",
     nickname: "Lily",
     location: "奥克兰中区 Auckland Central",
     description: "上班族，求安静合租，希望近公交。",
@@ -30,7 +40,9 @@ const mockListings = [
     color: "purple",
   },
   {
-    type: "rental" as const,
+    id: "sample-mia",
+    source: "sample",
+    type: "rental",
     nickname: "Mia",
     location: "基督城 Christchurch",
     description: "次卧招租，新装修，包基本水电。",
@@ -40,7 +52,9 @@ const mockListings = [
     color: "blue",
   },
   {
-    type: "seeking" as const,
+    id: "sample-zoe",
+    source: "sample",
+    type: "seeking",
     nickname: "Zoe",
     location: "惠灵顿 Wellington",
     description: "学生，预算有限，可合租。",
@@ -51,7 +65,9 @@ const mockListings = [
     color: "pink",
   },
   {
-    type: "rental" as const,
+    id: "sample-emma",
+    source: "sample",
+    type: "rental",
     nickname: "Emma",
     location: "皇后镇 Queenstown",
     description: "季租主卧，山景，适合短期过渡。",
@@ -61,7 +77,9 @@ const mockListings = [
     color: "purple",
   },
   {
-    type: "seeking" as const,
+    id: "sample-chloe",
+    source: "sample",
+    type: "seeking",
     nickname: "Chloe",
     location: "陶朗加 Tauranga",
     description: "带娃家庭，希望两居或主卧套间。",
@@ -71,79 +89,44 @@ const mockListings = [
     moveInDate: "9月",
     color: "coral",
   },
-  {
-    type: "rental" as const,
-    nickname: "Grace",
-    location: "奥克兰北岸 Auckland North Shore",
-    description: "近海滩，小区安静，次卧带书桌。",
-    price: "NZD $250–300",
-    leaseLayout: "合租·单卧室",
-    leaseTerm: "长租（4周以上）",
-    color: "blue",
-  },
-  {
-    type: "seeking" as const,
-    nickname: "Ruby",
-    location: "达尼丁 Dunedin",
-    description: "研究生，作息规律，不烟不酒。",
-    budget: "NZD $200–280/周",
-    leaseLayouts: ["合租·单卧室"],
-    leaseTerm: "长租（4周以上）",
-    moveInDate: "2月",
-    color: "pink",
-  },
-  {
-    type: "rental" as const,
-    nickname: "Ivy",
-    location: "汉密尔顿 Hamilton",
-    description: "一居室分租，独立卫浴，近怀大。",
-    price: "NZD $280–330",
-    leaseLayout: "整租·一居室",
-    leaseTerm: "长租（4周以上）",
-    color: "coral",
-  },
-  {
-    type: "seeking" as const,
-    nickname: "Nina",
-    location: "奥克兰东区 Auckland East",
-    description: "IT 行业，希望离高速口近。",
-    budget: "NZD $300–400/周",
-    leaseLayouts: ["整租·一居室"],
-    leaseTerm: "长租（4周以上）",
-    moveInDate: "尽快",
-    color: "purple",
-  },
-  {
-    type: "rental" as const,
-    nickname: "Kate",
-    location: "纳尔逊 Nelson",
-    description: "阳光小屋次卧，适合远程办公。",
-    price: "NZD $220–270",
-    leaseLayout: "合租·单卧室",
-    leaseTerm: "长租（4周以上）",
-    color: "blue",
-  },
-  {
-    type: "seeking" as const,
-    nickname: "Amy",
-    location: "新普利茅斯 New Plymouth",
-    description: "短期工作三个月，求拎包入住。",
-    budget: "NZD $200–350/周",
-    leaseLayouts: ["独立单间/开间"],
-    leaseTerm: "短租（4周以下）",
-    moveInDate: "11月",
-    color: "pink",
-  },
 ];
+
+function readUserListings(): GalleryListing[] {
+  return loadDemandPosts()
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .map((post, i) => demandPostToGalleryListing(post, i));
+}
 
 export default function DemandGallery() {
   const gridRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState<FilterType>("all");
+  const [userListings, setUserListings] = useState<GalleryListing[]>([]);
+
+  const refreshListings = useCallback(() => {
+    setUserListings(readUserListings());
+  }, []);
+
+  useEffect(() => {
+    refreshListings();
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === DEMAND_STORAGE_KEY || e.key === null) refreshListings();
+    };
+
+    window.addEventListener(DEMAND_POSTS_UPDATED, refreshListings);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(DEMAND_POSTS_UPDATED, refreshListings);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [refreshListings]);
+
+  const allListings = [...userListings, ...SAMPLE_LISTINGS];
 
   const filteredListings =
     filter === "all"
-      ? mockListings
-      : mockListings.filter((l) => l.type === filter);
+      ? allListings
+      : allListings.filter((l) => l.type === filter);
 
   useEffect(() => {
     if (!gridRef.current) return;
@@ -188,17 +171,17 @@ export default function DemandGallery() {
   return (
     <section id="gallery" className="bg-white py-[80px] md:py-[120px]">
       <div className="max-w-7xl mx-auto px-6 lg:px-12">
-        {/* Header */}
         <div className="text-center mb-8">
           <h2 className="font-serif-display text-[36px] text-warm-gray mb-3">
             姐妹们的信息
           </h2>
-          <p className="text-base text-warm-gray/60">
-            有人有房要出租，有人在找房子住 —— 看看有没有合适你的
+          <p className="text-base text-warm-gray/60 max-w-lg mx-auto">
+            {userListings.length > 0
+              ? "你刚发布的内容会出现在最上方（仅保存在本浏览器）。下方为示例信息。"
+              : "有人有房要出租，有人在找房子住 —— 发布后会显示在本页面最上方"}
           </p>
         </div>
 
-        {/* Filter Tabs */}
         <div className="flex justify-center gap-3 mb-10">
           {filterButtons.map((btn) => (
             <button
@@ -215,14 +198,27 @@ export default function DemandGallery() {
           ))}
         </div>
 
-        {/* Masonry Grid */}
         <div
           ref={gridRef}
           className="columns-1 md:columns-2 lg:columns-3 gap-6"
         >
-          {filteredListings.map((listing, i) => (
-            <div key={`${filter}-${i}`} className="demand-card-wrapper">
-              <DemandCard {...listing} onClick={handleCardClick} />
+          {filteredListings.map((listing) => (
+            <div key={listing.id} className="demand-card-wrapper">
+              <DemandCard
+                type={listing.type}
+                nickname={listing.nickname}
+                location={listing.location}
+                description={listing.description}
+                price={listing.price}
+                budget={listing.budget}
+                moveInDate={listing.moveInDate}
+                leaseLayout={listing.leaseLayout}
+                leaseLayouts={listing.leaseLayouts}
+                leaseTerm={listing.leaseTerm}
+                color={listing.color}
+                badge={listing.source === "user" ? "我发布的" : undefined}
+                onClick={handleCardClick}
+              />
             </div>
           ))}
         </div>
